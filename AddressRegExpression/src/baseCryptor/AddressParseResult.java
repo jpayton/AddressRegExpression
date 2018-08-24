@@ -1,4 +1,4 @@
-package baseCryptor;
+package baseRegex;
 
 import java.util.Map;
 
