@@ -1,19 +1,23 @@
-package baseRegex;
+package taAdr;
 
 import java.util.Dictionary;
+
 import java.util.Hashtable;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
+import taAdr.RegexOptions;
 import sun.misc.Regexp;
 
 public class AddrTron {
-	
+//region VARIABLES 	
 	private static Map<String,  String> directionals; 
 	private static Map<String,  String> suffixes; 
 	private static Map<String,  String> states; 
-
+	private static Map<String, String> fieldsmap;
+	private static Map<String, String> allSecondaryUnints;
+//endregion
+	
 	private static String [ ] fields =
 		{ "NUMBER", "PREDIRECTIONAL", "STREET", "STREETLINE",
 				"SUFFIX", "POSTDIRECTIONAL", "CITY",
@@ -480,21 +484,24 @@ public class AddrTron {
 		
 		suffixes = buildTable(suffixItems,suffixes);
 		
+		fieldsmap = buildTable(fields,fieldsmap);
+		
 	}
 	private static void InitializeRegex() {
 	
-		Regex suffixPattern = new Regex (		//todo: Need to figure this out
-				"|" 
-			+	"|" + suffixes.keys() 
-			+	"|" + suffixes.elements().Distinct())
-				)),
-		 	RegexOptions.Compiled);
+		  String suffixPattern = new Regex (		//todo: Need to figure this out
+				  Join("|", 
+						 new String [ ] = {
+								 Join("|" , suffixes.keys()); 
+								 Join("|", suffixes.elements().Distinct())
+				  })),
+		 	RegexOptions.COMPILED);
 		 	
 		 	String statePattern = "\b(?:" +
-		 			"|" + 
-		 			"|" + states.keys().Select(x => Regex.Escape(x))) + 
-					"|" + states.values() +
-			")\b";
+		 			Join("|", 
+		 			Join("|", states.keys()).Select(x => Regex.escape(x))), 
+					"|" + states.values()))
+				+ ")\b";
 		 	
  			String directionalPattern =
  	               "|" +
@@ -513,7 +520,7 @@ public class AddrTron {
 
 	}
 	
-	private static String Join(String oldstr, String[ ] newStr ) {
+	private static String Join(String oldStr, String[ ] newStr ) {
 			
 			String input = oldStr;
 			for (String item : newStr) {
@@ -531,6 +538,15 @@ public class AddrTron {
 		return input;
 	}
 
+	private static Map<String, String> joinMap(Map<String, String> srcMap, Map<String, String> destMap) {
+
+		for (Map.Entry<String, String> item : srcMap.entrySet()){ 
+			destMap.put(item.getKey(), item.getValue());
+		}
+	
+		return destMap;
+	}
+
 	private static Map<String, String> buildTable(String items [ ] [ ], Map<String, String> theTable) {
 
 		String item [ ] = null;
@@ -541,7 +557,17 @@ public class AddrTron {
 	
 		return theTable;
 	}
+
+
+	private static Map<String, String> buildTable(String items [ ], Map<String, String> theTable) {
+
+		for (int x = 0; x < items.length; x++) {
+			theTable.put(items[x], items[x]);
+		}
 	
+		return theTable;
+	}
+
     // Given a set of fields pulled from a successful match, this normalizes each value
     // by stripping off some punctuation and, if applicable, converting it to a standard
     // USPS abbreviation.
@@ -557,7 +583,7 @@ public class AddrTron {
 			String key = entry.getKey(); 
 			String value = entry.getValue(); 
 					
-			String = Regex.Replace (value,	"^\\s+|\\s+$|[^\\/\\w\\s\\-\\#\\&]",  String.Empty);
+			String = Regex.replace (value,	"^\\s+|\\s+$|[^\\/\\w\\s\\-\\#\\&]",  String.Empty);
 
                 // Normalize to official abbreviations where appropriate
                 value = GetNormalizedValueForField(key, value);
@@ -568,11 +594,163 @@ public class AddrTron {
 		// special case for an attahced unit
 		if (extracted.containsKey("SECONDARYNUMBER") &&
 				(!extracted.containsKey("SECONDARYNUMBER") ||
-				String.IsNullOrWhiteSpace(extracted.get("SECONDARYUNIT")))
+				IsNullOrWhiteSpace(extracted.get("SECONDARYUNIT"))))
 			normalized.replace("SECONDARYUNIT", "APT");
 			
 		return normalized;
 	}
 	
+    // <summary>
+    // Attempts to parse the given input as a US address.
+    // </summary>
+    // <param name="input">The input string.</param>
+    // <returns>The parsed address, or null if the address could not be parsed.</returns>
+    public AddressParseResult ParseAddress(String input)
+    {
+        if (!IsNullOrWhiteSpace(input))
+        {
+            Matcher match = addressRegex.match(input.ToUpperInvariant());
+            if (matcher.Success)
+            {
+                Map<String, String> extracted = GetApplicableFields(match);
+                return new AddressParseResult(Normalize(extracted));
+            }
+        }
+
+        return null;
+    }
+    
+    // <summary>
+    // Given a successful <see cref="Match"/>, this method creates a dictionary 
+    // consisting of the fields that we actually care to extract from the address.
+    // </summary>
+    // <param name="match">The successful <see cref="Match"/> instance.</param>
+    // <returns>A dictionary in which the keys are the name of the fields and the values
+    // are pulled from the input address.</returns>
+    private static Map<String, String> GetApplicableFields(Matcher match)
+    {
+        Map<String, String> applicable = new Hashtable<String, String>();
+
+        for (String field :addressRegex.GetGroupNames())
+        {
+            if (fieldsMap.contains(field))
+            {
+                if (match.Groups[field].Success)
+                {
+                    applicable.replace(field, match.Groups[field].value);
+                }
+            }
+        }
+
+        return applicable;
+    }
+    
+
+    // <summary>
+    // Given a dictionary that maps regular expressions to USPS abbreviations,
+    // this function finds the first entry whose regular expression matches the given
+    // input value and supplies the corresponding USPS abbreviation as its output. If
+    // no match is found, the original value is returned.
+    // </summary>
+    // <param name="map">The dictionary that maps regular expressions to USPS abbreviations.</param>
+    // <param name="input">The value to test against the regular expressions.</param>
+    // <returns>The correct USPS abbreviation, or the original value if no regular expression
+    // matched successfully.</returns>
+    private static String GetNormalizedValueByRegexLookup(Map<String, String> map,
+        String input)
+    {
+        String output = input;
+
+        for (Map.Entry<String, String> pair : map.entrySet())
+        {
+            String pattern = pair.getKey();
+            if (Regex.IsMatch(input, pattern))
+            {
+                output = pair.getValue();
+                break;
+            }
+        }
+
+        return output;
+    }
+
+    // <summary>
+    // Given a dictionary that maps strings to USPS abbreviations,
+    // this function finds the first entry whose key matches the given
+    // input value and supplies the corresponding USPS abbreviation as its output. If
+    // no match is found, the original value is returned.
+    // </summary>
+    // <param name="map">The dictionary that maps strings to USPS abbreviations.</param>
+    // <param name="input">The value to search for in the list of strings.</param>
+    // <returns>The correct USPS abbreviation, or the original value if no string
+    // matched successfully.</returns>
+    private static String GetNormalizedValueByStaticLookup(Map<String, String> map,
+        String input)
+    {
+        String output;
+
+        if (!map.TryGetValue(input, out output))
+        {
+            output = input;
+        }
+
+        return output;
+    }
+
+    // <summary>
+    // Given a field type and an input value, this method returns the proper USPS
+    // abbreviation for it (or the original value if no substitution can be found or is
+    // necessary).
+    // </summary>
+    // <param name="field">The type of the field.</param>
+    // <param name="input">The value of the field.</param>
+    // <returns>The normalized value.</returns>
+    private static String GetNormalizedValueForField( String field,    String input)
+    {
+        String output = input;
+
+        switch (field)
+        {
+            case "PREDIRECTIONAL":
+            case "POSTDIRECTIONAL":
+                output = GetNormalizedValueByStaticLookup(directionals, input);
+                break;
+                
+            case "SUFFIX":
+                output = GetNormalizedValueByStaticLookup(suffixes, input);
+                break;
+                
+            case "SECONDARYUNIT":
+                output = GetNormalizedValueByRegexLookup(allSecondaryUnits, input);
+                break;
+                
+            case "STATE":
+                output = GetNormalizedValueByStaticLookup(states, input);
+                break;
+                
+            case "NUMBER":
+                if (!input.contains("/"))
+                {
+                    output = input.replace(" ", ""); //String.Empty);
+                }
+
+                break;
+            default:
+                break;
+        }
+
+        return output;
+    }
+
+
+	static boolean IsNullOrWhiteSpace(String input) {
+		
+		String srcStr = input;
+		
+		srcStr = srcStr.trim();
+		if (srcStr != null || srcStr.isEmpty() )
+			return true;
 	
+		return false;
+	}
 }

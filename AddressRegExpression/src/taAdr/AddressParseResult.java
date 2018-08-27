@@ -1,11 +1,13 @@
-package baseRegex;
+package taAdr;
 
 import java.util.Map;
+import taAdr.ArgumentNulException;
 
 import com.sun.xml.internal.bind.v2.runtime.property.Property;
 
 public class AddressParseResult {
 
+//region PRVIATE 
 	private String street = null;
 	private String number = null;
 	private String suffix = null;
@@ -17,7 +19,9 @@ public class AddressParseResult {
 	private String state = null;
 	private String zip = null;
 	private String streetLine = null;
-	
+//endregion
+
+//region PROTECTED	
     // <summary>
     // Initializes a new instance of the <see cref="AddressParseResult"/> class.
     // </summary>
@@ -48,7 +52,8 @@ public class AddressParseResult {
             }
         }
     }
-
+//endregion
+        
 	private String Join(String str1, String [ ] str2) {
 		
 		String newStr = str1;
@@ -58,7 +63,7 @@ public class AddressParseResult {
 		
 		return newStr;
 	}
-	
+
 	private String streetline = null;
 
     // <summary>
@@ -83,14 +88,14 @@ public class AddressParseResult {
                 String streetLine = Join(" ", streetStack);
                 
                 streetLine = Regex
-                    .Replace(streetLine, "\\ +", " ")
-                    .Trim();
+                    .replace(streetLine, "\\ +", " ")
+                    .trim();
                 return streetLine;
             }
 
             return this.streetLine;
     } 
-    
+//region Setters_Getters    
  // <summary>
     // Gets the full street line, such as "500 N Main St" in "500 N Main St".
     // This is typically constructed by combining other elements in the parsed result.
@@ -101,7 +106,6 @@ public class AddressParseResult {
     {
             this.streetLine = value;
     }
-
 	
 	/**
 	 * @return the street
@@ -242,7 +246,7 @@ public class AddressParseResult {
 	public void setZip(String zip) {
 		this.zip = zip;
 	}
-
+//endregion
 
     // <summary>
     // Returns a <see cref="System.String"/> that represents this instance.
@@ -252,10 +256,10 @@ public class AddressParseResult {
     // </returns>
     protected String ToString()
     {
-        return String.Format(
-            CultureInfo.InvariantCulture,
+        return String.format(
+            //CultureInfo.InvariantCulture,
             "{0}; {1}, {2}  {3}",
-            this.getStreetline,
+            this.getStreetLine(),
             this.getCity(),
             this.getState(),
             this.getZip());
